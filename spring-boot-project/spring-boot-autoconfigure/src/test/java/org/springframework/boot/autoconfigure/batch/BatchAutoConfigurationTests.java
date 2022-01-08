@@ -57,10 +57,13 @@ import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.boot.jdbc.init.DataSourceScriptDatabaseInitializer;
 import org.springframework.boot.sql.init.DatabaseInitializationMode;
 import org.springframework.boot.sql.init.DatabaseInitializationSettings;
+import org.springframework.boot.task.TaskExecutorBuilder;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.core.task.SyncTaskExecutor;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.jdbc.BadSqlGrammarException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
@@ -78,6 +81,7 @@ import static org.mockito.Mockito.mock;
  * @author Stephane Nicoll
  * @author Vedran Pavic
  * @author Kazuki Shimizu
+ * @author Andreas Ahlenstorf
  */
 class BatchAutoConfigurationTests {
 
@@ -340,6 +344,38 @@ class BatchAutoConfigurationTests {
 						.hasBean("customInitializer"));
 	}
 
+	@Test
+	void jobLauncherUsesBatchTaskExecutorIfPresent() {
+		this.contextRunner.withUserConfiguration(TestConfiguration.class, EmbeddedDataSourceConfiguration.class,
+						BatchTaskExecutorConfiguration.class)
+				.run((context) -> {
+					assertThat(context).hasBean("batchTaskExecutor");
+
+					TaskExecutor taskExecutor = context.getBean("batchTaskExecutor", TaskExecutor.class);
+					BatchConfigurer batchConfigurer = context.getBean(BatchConfigurer.class);
+
+					assertThat(batchConfigurer.getJobLauncher())
+							.hasFieldOrPropertyWithValue("taskExecutor", taskExecutor);
+				});
+	}
+
+	@Test
+	void jobLauncherConfiguredByJpaBatchConfigurerUsesBatchTaskExecutorIfPresent() {
+		this.contextRunner.withUserConfiguration(TestConfiguration.class, EmbeddedDataSourceConfiguration.class,
+				HibernateJpaAutoConfiguration.class, BatchTaskExecutorConfiguration.class).run((context) -> {
+			PlatformTransactionManager transactionManager = context.getBean(PlatformTransactionManager.class);
+			assertThat(transactionManager.toString().contains("JpaTransactionManager")).isTrue();
+
+			assertThat(context).hasBean("batchTaskExecutor");
+
+			TaskExecutor taskExecutor = context.getBean("batchTaskExecutor", TaskExecutor.class);
+			BatchConfigurer batchConfigurer = context.getBean(BatchConfigurer.class);
+
+			assertThat(batchConfigurer.getJobLauncher())
+					.hasFieldOrPropertyWithValue("taskExecutor", taskExecutor);
+		});
+	}
+
 	@Configuration(proxyBeanMethods = false)
 	protected static class BatchDataSourceConfiguration {
 
@@ -500,6 +536,17 @@ class BatchAutoConfigurationTests {
 		@Bean
 		DataSourceScriptDatabaseInitializer customInitializer(DataSource dataSource) {
 			return new DataSourceScriptDatabaseInitializer(dataSource, new DatabaseInitializationSettings());
+		}
+
+	}
+
+	@Configuration(proxyBeanMethods = false)
+	protected static class BatchTaskExecutorConfiguration {
+
+		@BatchTaskExecutor
+		@Bean
+		public TaskExecutor batchTaskExecutor() {
+			return new SyncTaskExecutor();
 		}
 
 	}

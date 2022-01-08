@@ -223,7 +223,7 @@ class JobLauncherApplicationRunnerTests {
 		private final DataSource dataSource;
 
 		protected BatchConfiguration(DataSource dataSource) {
-			super(new BatchProperties(), dataSource, new TransactionManagerCustomizers(null));
+			super(new BatchProperties(), dataSource, new TransactionManagerCustomizers(null), null);
 			this.dataSource = dataSource;
 		}
 

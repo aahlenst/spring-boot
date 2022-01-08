@@ -23,7 +23,9 @@ import jakarta.persistence.EntityManagerFactory;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.boot.autoconfigure.transaction.TransactionManagerCustomizers;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
 
@@ -31,6 +33,7 @@ import org.springframework.transaction.PlatformTransactionManager;
  * A {@link BasicBatchConfigurer} tailored for JPA.
  *
  * @author Stephane Nicoll
+ * @author Andreas Ahlenstorf
  * @since 2.0.0
  */
 public class JpaBatchConfigurer extends BasicBatchConfigurer {
@@ -46,10 +49,30 @@ public class JpaBatchConfigurer extends BasicBatchConfigurer {
 	 * @param transactionManagerCustomizers transaction manager customizers (or
 	 * {@code null})
 	 * @param entityManagerFactory the entity manager factory (or {@code null})
+	 * @deprecated since 3.0.0 for removal in 3.2.0 in favor of
+	 * {@link #JpaBatchConfigurer(BatchProperties, DataSource, TransactionManagerCustomizers, EntityManagerFactory,
+	 * TaskExecutor)}
 	 */
+	@Deprecated
 	protected JpaBatchConfigurer(BatchProperties properties, DataSource dataSource,
 			TransactionManagerCustomizers transactionManagerCustomizers, EntityManagerFactory entityManagerFactory) {
-		super(properties, dataSource, transactionManagerCustomizers);
+		super(properties, dataSource, transactionManagerCustomizers, null);
+		this.entityManagerFactory = entityManagerFactory;
+	}
+
+	/**
+	 * Create a new {@link BasicBatchConfigurer} instance.
+	 * @param properties the batch properties
+	 * @param dataSource the underlying data source
+	 * @param transactionManagerCustomizers transaction manager customizers (or
+	 * {@code null})
+	 * @param entityManagerFactory the entity manager factory (or {@code null})
+	 * @param taskExecutor the executor to be used by {@link JobLauncher} (or {@code null})
+	 */
+	protected JpaBatchConfigurer(BatchProperties properties, DataSource dataSource,
+			TransactionManagerCustomizers transactionManagerCustomizers, EntityManagerFactory entityManagerFactory,
+			TaskExecutor taskExecutor) {
+		super(properties, dataSource, transactionManagerCustomizers, taskExecutor);
 		this.entityManagerFactory = entityManagerFactory;
 	}
 
